@@ -10,7 +10,7 @@
 
 #define LED_PIN 2
 
-FirebaseData fbdo;
+FirebaseData fbdo, fbdo_led;
 FirebaseAuth auth;
 FirebaseConfig config;
 FirebaseData stream;
@@ -47,12 +47,17 @@ void setup() {
   Firebase.begin(&config, &auth);
   Firebase.reconnectWiFi(true);
 
-  // Set up a stream to listen for changes in "Led/status"
-  if (!Firebase.RTDB.beginStream(&stream, "Led/status")) {
-    Serial.printf("Stream begin error, %s\n", stream.errorReason().c_str());
-  } else {
-    Firebase.RTDB.setStreamCallback(&stream, streamCallback, streamTimeoutCallback);
+  // // Set up a stream to listen for changes in "Led/status"
+  // if (!Firebase.RTDB.beginStream(&stream, "Led/status")) {
+  //   Serial.printf("Stream begin error, %s\n", stream.errorReason().c_str());
+  // } else {
+  //   Firebase.RTDB.setStreamCallback(&stream, streamCallback, streamTimeoutCallback);
+  // }
+
+  if(Firebase.RTDB.beginStream(&fbdo_led,"Led/status")){
+    
   }
+
 }
 
 void loop() {
@@ -66,23 +71,39 @@ void loop() {
       Serial.println("FAILED: " + fbdo.errorReason());
     }
   }
-}
 
-// Callback function for stream changes
-void streamCallback(FirebaseStream data) {
-  if (data.dataType() == "boolean") {
-    statusLed = data.boolData();
-    digitalWrite(LED_PIN, statusLed ? HIGH : LOW); // Set LED state
-    Serial.printf("Stream Data - Path: %s, Type: %s, Value: %s\n", data.dataPath().c_str(), data.dataType().c_str(), data.stringData().c_str());
-  }
-}
-
-// Callback function for stream timeout
-void streamTimeoutCallback(bool timeout) {
-  if (timeout) {
-    Serial.println("Stream timeout, resuming...");
-    if (!stream.httpConnected()) {
-      Serial.printf("Error code: %d, reason: %s\n", stream.httpCode(), stream.errorReason().c_str());
+  if(Firebase.ready() && signupOK){
+    if(!Firebase.RTDB.readStream(&fbdo_led)){
+      Serial.println("Stream led error");
+    }
+    if(fbdo_led.streamAvailable()){
+      if(fbdo_led.dataType()=="boolean"){
+        statusLed=fbdo_led.boolData();
+        if(statusLed==true){
+          digitalWrite(LED_PIN,1);
+        }else{
+          digitalWrite(LED_PIN,0);
+        }
+      }
     }
   }
 }
+
+// // Callback function for stream changes
+// void streamCallback(FirebaseStream data) {
+//   if (data.dataType() == "boolean") {
+//     statusLed = data.boolData();
+//     digitalWrite(LED_PIN, statusLed ? HIGH : LOW); // Set LED state
+//     Serial.printf("Stream Data - Path: %s, Type: %s, Value: %s\n", data.dataPath().c_str(), data.dataType().c_str(), data.stringData().c_str());
+//   }
+// }
+
+// // Callback function for stream timeout
+// void streamTimeoutCallback(bool timeout) {
+//   if (timeout) {
+//     Serial.println("Stream timeout, resuming...");
+//     if (!stream.httpConnected()) {
+//       Serial.printf("Error code: %d, reason: %s\n", stream.httpCode(), stream.errorReason().c_str());
+//     }
+//   }
+// }
